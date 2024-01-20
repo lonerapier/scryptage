@@ -1,48 +1,6 @@
 from sage.all import *
 
-
-def random_curve_values(E, n):
-    return [E.random_element() for i in range(n)]
-
-
-def random_field_values(F, n):
-    return [F.random_element() for i in range(n)]
-
-
-def inner_product_vec(a, b):
-    assert len(a) == len(b)
-
-    res = 0
-    for i in range(len(a)):
-        res += a[i] * b[i]
-    return res
-
-
-def inner_product_point(a, b):
-    assert len(a) == len(b)
-    c = 0
-    for i in range(len(a)):
-        c = c + int(a[i]) * b[i]
-    return c
-
-
-def scalar_mul_field(f, v, n):
-    res = [None] * n
-    for i in range(n):
-        res[i] = f[i] * v
-    return res
-
-
-def scalar_mul_point(g, v, n):
-    r = [None] * n
-    for i in range(n):
-        r[i] = g[i] * int(v)
-    return r
-
-
-def add_vectors(a, b):
-    assert len(a) == len(b)
-    return [x + y for x, y in zip(a, b)]
+load("utils.sage")
 
 
 class Bulletproofs:
@@ -70,7 +28,7 @@ class Bulletproofs:
         P = (
             inner_product_point(a, self.G)
             + inner_product_point(b, self.H)
-            + int(inner_product_vec(a, b)) * self.U
+            + (inner_product_vec(a, b)) * self.U
         )
         return P
 
@@ -99,12 +57,12 @@ class Bulletproofs:
             L[i] = (
                 inner_product_point(a_l, g_r)
                 + inner_product_point(b_r, h_l)
-                + int(inner_product_vec(a_l, b_r)) * self.U
+                + (inner_product_vec(a_l, b_r)) * self.U
             )
             R[i] = (
                 inner_product_point(a_r, g_l)
                 + inner_product_point(b_l, h_r)
-                + int(inner_product_vec(a_r, b_l)) * self.U
+                + (inner_product_vec(a_r, b_l)) * self.U
             )
 
             # print("i: {}, L[i]: {}, R[i]: {}".format(i, L[i], R[i]))
@@ -129,8 +87,6 @@ class Bulletproofs:
         assert len(b) == 1
         assert len(g) == 1
         assert len(h) == 1
-        assert len(L) == k
-        assert len(R) == k
 
         return a[0], b[0], g[0], h[0], L, R
 
@@ -139,10 +95,10 @@ class Bulletproofs:
         for i in range(len(L)):
             u_k = u[i]
             u_k_inv = u[i] ^ (-1)
-            LHS = P + L[i] * int(u_k**2) + R[i] * int(u_k_inv**2)
-        RHS = int(a) * g + int(b) * h + int(a * b) * self.U
+            LHS = LHS + L[i] * (u_k**2) + R[i] * (u_k_inv**2)
+        RHS = a * g + b * h + (a * b) * self.U
 
-        # print(LHS, RHS)
+        print("LHS: {}\nRHS: {}".format(LHS, RHS))
         assert LHS == RHS
 
 
@@ -152,19 +108,19 @@ bn254 = BN254()
 
 n = 8
 a = [
-    bn254.Fp(1),
-    bn254.Fp(2),
-    bn254.Fp(3),
-    bn254.Fp(4),
-    bn254.Fp(5),
-    bn254.Fp(6),
-    bn254.Fp(7),
-    bn254.Fp(8),
+    bn254.Fr(1),
+    bn254.Fr(2),
+    bn254.Fr(3),
+    bn254.Fr(4),
+    bn254.Fr(5),
+    bn254.Fr(6),
+    bn254.Fr(7),
+    bn254.Fr(8),
 ]
-x = bn254.Fp(3)
+x = bn254.Fr(3)
 b = [x**i for i in range(n)]
 
-bulletproofs_ipa = Bulletproofs(bn254.Fp, bn254.E, n)
+bulletproofs_ipa = Bulletproofs(bn254.Fr, bn254.E, n)
 
 u = bulletproofs_ipa.setup(bn254.G1)
 

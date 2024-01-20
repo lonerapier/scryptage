@@ -1,7 +1,8 @@
-from sage.all import *
-
-# taken from https://github.com/arnaucube/math/blob/master/bls-sigs.sage
+# modified from https://github.com/arnaucube/math/blob/master/bls12-381.sage
 # and https://github.com/darkrenaissance/darkfi/blob/master/script/research/ec/pairing-modified-tate.sage
+# and https://github.com/rdubois-crypto/FreshCryptoLib/blob/master/sage/FCL_pairings/arithmetic/curves/bls12_381.sage
+
+from sage.all import *
 
 # Generator of order r in E1 / F1
 G1x = 0x17F1D3A73197D7942695638C4FA9AC0FC3688C4F9774B905A14E3A3F171BAC586C55E83FF97A1AEFFB3AF00ADB22C6BB
@@ -45,16 +46,17 @@ class Pairing:
 
     def lift_E1_to_E12(self, P):
         """
-        Lift point on E/F_q to E/F_{q^12} using the natural lift
+        Lift point on `E/F_q` to `E/F_{q^12}` using the natural lift
         """
         assert P.curve() == self.E1, "Attempting to lift a point from the wrong curve."
         return self.E12(P)
 
     def lift_E2_to_E12(self, P):
         """
-        Lift point on E/F_{q^2} to E/F_{q_12} through the sextic twist
+        Lift point on `E/F_{q^2}` to `E/F_{q^12}` through the sextic twist
         """
         assert P.curve() == self.E2, "Attempting to lift a point from the wrong curve."
+        # print(c.polynomial().coefficients() for c in (self.curve.h2*P).xy())
         xs, ys = [c.polynomial().coefficients() for c in (self.curve.h2*P).xy()]
         nx = self.curve.F12(xs[0] - xs[1] + self.curve.w ^ 6*xs[1])
         ny = self.curve.F12(ys[0] - ys[1] + self.curve.w ^ 6*ys[1])
