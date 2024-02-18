@@ -54,6 +54,7 @@ class BN254:
 
         self.G1 = self.E(G1x, G1y)
         assert self.G1.curve() == self.E
+        assert self.G1.order() == self.r
 
         # self.G2 = self.E2(G2x0+self.u*G2x1, G2y0+self.u*G2y1)
 
