@@ -1,7 +1,9 @@
 # example taken from [thaler's](https://people.cs.georgetown.edu/jthaler/ProofsArgsAndZK.pdf) book chapter 3.7
+# randomness in this file is completely twisted and not advisable to follow. transcript isn't implemented.
 
 from sage.all import *
 from sage.rings.polynomial.polydict import PolyDict
+import unittest
 
 p = 19
 F = GF(p)
@@ -32,6 +34,9 @@ r = [int(F.random_element()), int(F.random_element())]
 
 def to_bin(i, num):
 	return list(f'{i:0{num}b}')
+
+def to_int_list_bin(i, num):
+	return [int(x) for x in to_bin(i, num)]
 
 def delta_w(a, b):
 	return (a*b)+((1-a)*(1-b))
@@ -100,10 +105,11 @@ def max_degree(P: PolyDict):
 
 	return lookup_degree
 
-def evaluate(P: PolyDict, r):
+def evaluate(P: PolyDict, F, r):
 	"""
 	params:
 	- `P`: multilinear polynomial
+	- `F`: field
 	- `r`: list of random variables
 
 	returns:
@@ -118,6 +124,16 @@ def evaluate(P: PolyDict, r):
 			prod *= F(int(r[i])) ** term[i]
 		result += coeff * prod
 
+	return result
+
+def evaluate_multipoly_hypercube(F, P):
+	"""
+	evaluate multilinear polynomial at all points in hypercube
+	"""
+	result = F(0)
+	n = 2**num_vars(P)
+	for i in range(n):
+		result += evaluate(P, F, to_bin(i, num_vars(P)))
 	return result
 
 # use this: https://doc.sagemath.org/html/en/reference/polynomial_rings/sage/rings/polynomial/polydict.html#sage.rings.polynomial.polydict.PolyDict
@@ -169,7 +185,7 @@ class Sumcheck:
 
 		return uniPoly
 
-	def gen_uni_poly(self, r):
+	def prove_interactive(self, r):
 		"""
 		takes a random variable r and creates univariate polynomial by evaluating
 		poly `G(r0, r1, ..., rk, xk+1, ..., xn)`.
@@ -187,23 +203,25 @@ class Sumcheck:
 
 		return unipoly
 
-	def evaluate_multipoly_hypercube(self):
-		"""
-		evaluate multilinear polynomial at all points in hypercube
-		"""
-		result = self.F(0)
-		n = 2**num_vars(self.P)
-		for i in range(n):
-			result += evaluate(self.P, to_bin(i, num_vars(self.P)))
-		return result
+	def prove_non_interactive(self):
+		randomness = []
+		uni_polys = []
+		r = None
+		for i in range(num_vars(self.P)):
+			unipoly = self.prove_interactive(r)
+			uni_polys.append(unipoly)
+			r = F.random_element()
+			randomness.append(r)
 
-	def verify(self, c):
+		return (uni_polys, randomness)
+
+	def verify_interactive(self, c):
 		"""
 		runs sumcheck protocol and verifies the result
 		"""
 		lookup_degree_table = max_degree(self.P)
 
-		gi = self.gen_uni_poly(None)
+		gi = self.prove_interactive(None)
 		print("round 0: ", gi)
 
 		# print(gi, gi(0), gi(1))
@@ -215,7 +233,7 @@ class Sumcheck:
 		for i in range(1, num_vars(self.P)):
 			r = F.random_element()
 			actual = gi(r)
-			gi = self.gen_uni_poly(r)
+			gi = self.prove_interactive(r)
 			print(f"round {i}: {gi}")
 			expected = gi(0) + gi(1)
 			assert(actual == expected)
@@ -224,34 +242,64 @@ class Sumcheck:
 		r = F.random_element()
 		expected = gi(r)
 		self.r.append(r)
-		actual = evaluate(self.P, self.r)
+		actual = evaluate(self.P, self.F, self.r)
 		print("last round: ", actual, expected)
 		return actual == expected
 
+	def verify_non_interactive(self, proof, r, sum):
+		"""
+		runs sumcheck protocol non interactively and verifies the result
+		TODO: implement transcript
+		"""
 
-def test_poly_funcs():
-	multipoly1 = PolyDict({(3, 0, 0): F(2), (1, 0, 1): F(1), (0, 1, 1): F(1)})
+		lookup_degree_table = max_degree(self.P)
 
-	num = num_vars(multipoly1)
-	assert(num == 3)
+		for i in range(num_vars(self.P)):
+			unipoly = proof[i]
+			expected = unipoly(0) + unipoly(1)
+			assert(expected == sum)
+			assert(unipoly.degree() <= lookup_degree_table[i])
 
-	degree = max_degree(multipoly1)
-	assert(degree == [3, 1, 1])
+			sum = unipoly(r[i])
 
-	evaluation = evaluate(multipoly1, [1, 0, 1])
-	assert(evaluation == F(3))
+		expected = sum
+		actual = evaluate(self.P, self.F, r)
+		assert(expected == actual)
 
-multipoly1 = PolyDict({(3, 0, 0): F(2), (1, 0, 1): F(1), (0, 1, 1): F(1)})
-multipoly = PolyDict({(2, 3, 2): F(2), (1, 0, 1): F(3), (2, 1, 0): F(4)})
 
-print("starting sumcheck with poly: ", multipoly.latex(['x1', 'x2', 'x3']))
-sumcheck = Sumcheck(F, multipoly)
-evaluation = sumcheck.evaluate_multipoly_hypercube()
+class TestSumcheck(unittest.TestCase):
+	def test_sumcheck(self):
+		multipoly1 = PolyDict({(3, 0, 0): F(2), (1, 0, 1): F(1), (0, 1, 1): F(1)})
+		print("starting sumcheck with poly: ", multipoly1.latex(['x1', 'x2', 'x3']))
+		sumcheck = Sumcheck(F, multipoly1)
+		evaluation = evaluate_multipoly_hypercube(sumcheck.F, sumcheck.P)
+		assert(sumcheck.verify_interactive(evaluation))
 
-assert(sumcheck.verify(evaluation))
+		multipoly = PolyDict({(2, 3, 2): F(2), (1, 0, 1): F(3), (2, 1, 0): F(4)})
+		print("starting sumcheck with poly: ", multipoly1.latex(['x1', 'x2', 'x3']))
+		sumcheck = Sumcheck(F, multipoly)
+		evaluation = evaluate_multipoly_hypercube(sumcheck.F, sumcheck.P)
+		assert(sumcheck.verify_interactive(evaluation))
 
-print("starting sumcheck with poly: ", multipoly1.latex(['x1', 'x2', 'x3']))
-sumcheck = Sumcheck(F, multipoly1)
-evaluation = sumcheck.evaluate_multipoly_hypercube()
+	def test_poly_funcs(self):
+		multipoly1 = PolyDict({(3, 0, 0): F(2), (1, 0, 1): F(1), (0, 1, 1): F(1)})
 
-assert(sumcheck.verify(evaluation))
+		num = num_vars(multipoly1)
+		assert(num == 3)
+
+		degree = max_degree(multipoly1)
+		assert(degree == [3, 1, 1])
+
+		evaluation = evaluate(multipoly1, F, [1, 0, 1])
+		assert(evaluation == F(3))
+
+	def test_non_interactive(self):
+		multipoly1 = PolyDict({(3, 0, 0): F(2), (1, 0, 1): F(1), (0, 1, 1): F(1)})
+		print("starting sumcheck with poly: ", multipoly1.latex(['x1', 'x2', 'x3']))
+		sumcheck = Sumcheck(F, multipoly1)
+		proof, r = sumcheck.prove_non_interactive()
+		sum = evaluate_multipoly_hypercube(sumcheck.F, sumcheck.P)
+		sumcheck.verify_non_interactive(proof, r, sum)
+
+# if __name__ == '__main__':
+#     unittest.main()
