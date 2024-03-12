@@ -6,5 +6,6 @@ Please consider scolding me, if i've not attributed your code.
 
 ## Acknowledgments
 
-- [arnaucube's math]() repo
-- ethereum's [pyecc]()
+- [arnaucube's math](https://github.com/arnaucube/math/) notes
+- ethereum's [pyecc](https://github.com/ethereum/py_ecc)
+- scipr lab's [ecfactory](https://github.com/scipr-lab/ecfactory)
