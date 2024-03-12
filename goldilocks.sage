@@ -27,3 +27,8 @@ print(g3, g3.multiplicative_order().factor())
 #     num = rou / i
 #     tf = F(num)
 #     print(i, tf.order())
+
+a = F(2)
+b = a ** (p - 2)
+c = 1 / a
+print(a, b, c, a * b)
