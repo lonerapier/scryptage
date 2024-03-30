@@ -74,7 +74,7 @@ def ifft1(F, n, omega, a):
 
 def fft2(F, n, omega, a):
     """
-    calculates the fft of a polynomial using the cooley-tukey algorithm
+    calculates the fft of a polynomial using the cooley-tukey algorithm: <https://www.algorithm-archive.org/contents/cooley_tukey/cooley_tukey.html>
 
     inputs:
     - F: finite field
@@ -82,6 +82,8 @@ def fft2(F, n, omega, a):
     - omega: primitive n-th root of unity
     - a: polynomial
     """
+
+    assert is_power_of_two(n)
 
     if n == 1:
         return a
@@ -99,6 +101,49 @@ def fft2(F, n, omega, a):
     for k in range(n2):
         y[k] = y_even[k] + omega ^ k * y_odd[k]
         y[k + n2] = y_even[k] - omega ^ k * y_odd[k]
+
+    return y
+
+
+def bit_reversal(num, n):
+    result = 0
+    for _ in range(n):
+        result <<= 1
+        result |= num & 1
+        num >>= 1
+    return result
+
+
+def iterative_fft2(F, n, omega, a):
+    """
+    calculates the fft of a polynomial using the iterative cooley-tukey algorithm: <https://www.algorithm-archive.org/contents/cooley_tukey/cooley_tukey.html>
+
+    inputs:
+    - F: finite field
+    - n: degree of the polynomial
+    - omega: primitive n-th root of unity
+    - a: polynomial
+    """
+
+    assert is_power_of_two(n)
+
+    y = [F(0) for _ in range(n)]
+
+    logn = log(n, 2)
+    for i in range(n):
+        y[bit_reversal(i, logn)] = a[i]
+
+    for i in range(1, logn + 1):
+        stride = 2 ^ i
+        omega_stride = omega ^ (n / stride)
+        for j in range(0, n, stride):
+            omega_power = 1
+            for k in range(stride // 2):
+                even = y[j + k]
+                odd = y[j + k + stride // 2] * omega_power
+                y[j + k] = even + odd
+                y[j + k + stride // 2] = even - odd
+                omega_power *= omega_stride
 
     return y
 
@@ -193,6 +238,18 @@ class TestFFT(unittest.TestCase):
         R = PolynomialRing(F, "x")
         a_poly = R(a)
         a_eval = fft2(F, p - 1, g, a)
+
+        for i in range(p - 1):
+            self.assertEqual(a_eval[i], a_poly(g ^ i))
+
+    def test_iterative_fft2(self):
+        p = 17
+        F = GF(p)
+        a = sample_poly(F)
+        g = primitive_rou(F, p - 1)
+        R = PolynomialRing(F, "x")
+        a_poly = R(a)
+        a_eval = iterative_fft2(F, p - 1, g, a)
 
         for i in range(p - 1):
             self.assertEqual(a_eval[i], a_poly(g ^ i))
