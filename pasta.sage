@@ -1,0 +1,9 @@
+from sage.all import *
+
+p1 = 0x40000000000000000000000000000000224698FC094CF91B992D30ED00000001
+F1 = GF(p1)
+pallas = EllipticCurve(F1, [0, 5])  # pallas curve
+
+p2 = 0x40000000000000000000000000000000224698FC0994A8DD8C46EB2100000001
+F2 = GF(p2)
+vesta = EllipticCurve(F2, [0, 5])  # vesta curve
