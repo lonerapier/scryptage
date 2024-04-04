@@ -1,6 +1,8 @@
 # modified from https://github.com/bellesmarta/baby_jubjub/blob/master/findCurve.sage
 # and https://github.com/iden3/iden3-docs/blob/master/source/iden3_repos/research/publications/zkproof-standards-workshop-2/baby-jubjub/Baby-Jubjub.pdf
 
+from sage.all import *
+
 P = 21888242871839275222246405745257275088548364400416034343698204186575808495617
 Fr = GF(P)
 h = 8  # cofactor
